@@ -1,4 +1,4 @@
-# Render Blueprint for a public FreeLLMAPI deployment.
+# Render Blueprint for JayRouter (a public FreeLLMAPI deployment).
 #
 # Secrets are NOT in this file. ENCRYPTION_KEY and FREEAPI_CONFIG_JSON are
 # `sync: false`, so Render asks for them once in the dashboard and stores them
@@ -7,7 +7,7 @@
 # instance has no persistent disk and starts each boot with an empty database.
 services:
   - type: web
-    name: freellmapi
+    name: jayrouter
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
