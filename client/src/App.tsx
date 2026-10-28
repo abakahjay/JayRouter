@@ -45,6 +45,7 @@ import EmbeddingDetailPage from '@/pages/EmbeddingDetailPage'
 import AnalyticsPage from '@/pages/AnalyticsPage'
 import LogsPage from '@/pages/LogsPage'
 import PremiumPage from '@/pages/PremiumPage'
+import { DeployCredit } from '@/components/deploy-credit'
 import NotFoundPage from '@/pages/NotFoundPage'
 import AgentsPage from '@/pages/AgentsPage'
 
@@ -142,7 +143,7 @@ function Brand() {
   return (
     <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-70">
       <span className="inline-block size-2 rounded-full bg-foreground" />
-      <span className="font-semibold tracking-tight text-sm">FreeLLMAPI</span>
+      <span className="font-semibold tracking-tight text-sm">JayRouter</span>
     </Link>
   )
 }
@@ -512,6 +513,7 @@ function App() {
                 <NewBuildPrompt />
               </AppShell>
             </AuthGate>
+            <DeployCredit />
           </BrowserRouter>
         </I18nProvider>
       </ThemeProvider>

@@ -1,0 +1,37 @@
+# Render Blueprint for a public FreeLLMAPI deployment.
+#
+# Secrets are NOT in this file. ENCRYPTION_KEY and FREEAPI_CONFIG_JSON are
+# `sync: false`, so Render asks for them once in the dashboard and stores them
+# encrypted. FREEAPI_CONFIG_JSON carries the admin account and provider keys;
+# it is re-applied on every boot, which matters on the free plan because the
+# instance has no persistent disk and starts each boot with an empty database.
+services:
+  - type: web
+    name: freellmapi
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/ping
+    autoDeploy: true
+    envVars:
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: FREEAPI_CONFIG_JSON
+        sync: false
+      # One reverse proxy (Render's) sits in front, so trust exactly one hop
+      # for client IPs and rate limiting.
+      - key: TRUST_PROXY
+        value: "1"
+      # Public demo: keep strangers from draining the free-tier quotas.
+      - key: PROXY_RATE_LIMIT_RPM
+        value: "10"
+      - key: REQUEST_MAX_TOKENS_BUDGET
+        value: "16000"
+      - key: ADMIN_RATE_LIMIT_RPM
+        value: "300"
+      # Hosted on the internet: never let a custom provider point at
+      # loopback/LAN addresses inside Render's network.
+      - key: FREEAPI_BLOCK_PRIVATE_PROVIDER_URLS
+        value: "true"
+      - key: FREELLMAPI_UPDATE_CHECK
+        value: "off"

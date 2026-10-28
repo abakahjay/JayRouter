@@ -1,3 +1,11 @@
+> **JayRouter.** My rebranded, customised deployment of [FreeLLMAPI](https://github.com/tashfeenahmed/freellmapi), the open-source LLM router by Tashfeen Ahmed (MIT, see [LICENSE](LICENSE)). The first commit is the unmodified upstream source; my changes are in the commits after it:
+>
+> - a Render Blueprint ([`render.yaml`](render.yaml)) for a hardened public deployment: secrets kept in Render's encrypted environment, proxy rate limits for a public demo, private-network provider URLs blocked;
+> - JayRouter branding across the dashboard, with a footer linking to my portfolio;
+> - local setup connecting Gemini, Groq, OpenRouter and Cohere free tiers, plus Claude Code, Codex, OpenCode, Continue and Kilo Code as clients.
+>
+> Joshua Blessed · [Portfolio](https://portfolio-8jmo.onrender.com) · [@abakahjay](https://github.com/abakahjay)
+
 <div align="center">
 
 # FreeLLMAPI

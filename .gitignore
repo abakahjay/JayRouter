@@ -25,3 +25,6 @@ update-hermes.sh
 
 # Monetization planning — private, never committed
 monetization/
+
+# Local deployment secrets (never commit)
+RENDER-SECRETS.local.txt
