@@ -28,3 +28,4 @@ monetization/
 
 # Local deployment secrets (never commit)
 RENDER-SECRETS.local.txt
+render-api-key.txt

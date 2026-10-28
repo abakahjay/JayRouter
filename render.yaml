@@ -18,6 +18,22 @@ services:
         sync: false
       - key: FREEAPI_CONFIG_JSON
         sync: false
+      # No persistent disk on the free plan: the database is restored from
+      # this encrypted backup on boot and re-uploaded every minute. The store
+      # is a route on my FullBackendd service, kept in MongoDB as ciphertext.
+      - key: FREEAPI_DB_BACKUP_URL
+        value: https://fullbackendd.onrender.com/api/v1/jayrouter/backups/jayrouter
+      # Requests to the store are signed with a key derived from
+      # ENCRYPTION_KEY; the store holds only the public key. No shared token.
+      - key: FREEAPI_DB_BACKUP_SIGN
+        value: ed25519
+      - key: FREEAPI_DB_BACKUP_INTERVAL_MS
+        value: "60000"
+      # Dashboard login, encrypted with this service's ENCRYPTION_KEY: only the
+      # server can read it, so it is safe in a public file. Overrides the admin
+      # entry in FREEAPI_CONFIG_JSON on a fresh database.
+      - key: FREEAPI_CONFIG_SEALED
+        value: v1.9c157307f6800453f1701604a46880a1.34b0481183826f8c1d0ec551037f3da0.847dfe6450a9a97a63bae36207f3db88a32c2768b1d0eed11545347ef3d34b32c990c0ef14bf06506c14665951d4bdb2d969a50b2d0a655198d1326b44b738d82d970de42860910f
       # One reverse proxy (Render's) sits in front, so trust exactly one hop
       # for client IPs and rate limiting.
       - key: TRUST_PROXY

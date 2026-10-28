@@ -2,7 +2,7 @@ import fs from 'fs';
 import { z } from 'zod';
 import type { Db } from '../db/types.js';
 import { getDb, getSetting, setSetting } from '../db/index.js';
-import { encrypt } from '../lib/crypto.js';
+import { decrypt, encrypt } from '../lib/crypto.js';
 import { resolveProvider } from '../providers/index.js';
 import { setCustomWeights, setRoutingStrategy, setKeySelectionStrategy } from './router.js';
 import { ensureModelInProfiles } from './profile-models.js';
@@ -148,7 +148,7 @@ interface NormalizedCustomModel {
   fallbackEnabled?: boolean;
 }
 
-function readConfigFromEnv(): { source: string; value: unknown } | null {
+function readPlainConfigFromEnv(): { source: string; value: unknown } | null {
   const inline = process.env.FREEAPI_CONFIG_JSON?.trim();
   if (inline) return { source: 'FREEAPI_CONFIG_JSON', value: JSON.parse(inline) };
 
@@ -156,6 +156,25 @@ function readConfigFromEnv(): { source: string; value: unknown } | null {
   if (configPath) return { source: configPath, value: JSON.parse(fs.readFileSync(configPath, 'utf8')) };
 
   return null;
+}
+
+// FREEAPI_CONFIG_SEALED: a config fragment encrypted with this install's
+// ENCRYPTION_KEY ("v1.<iv>.<authTag>.<ciphertext>", hex, as lib/crypto.ts
+// writes them). Only a server holding the key can read it, so it can sit in a
+// public render.yaml. Its top-level entries override the plain config's.
+function readConfigFromEnv(): { source: string; value: unknown } | null {
+  const plain = readPlainConfigFromEnv();
+  const sealed = process.env.FREEAPI_CONFIG_SEALED?.trim();
+  if (!sealed) return plain;
+
+  const [version, iv, authTag, encrypted] = sealed.split('.');
+  if (version !== 'v1' || !iv || !authTag || !encrypted) throw new Error('FREEAPI_CONFIG_SEALED is not in v1.<iv>.<authTag>.<ciphertext> form');
+  const unsealed = JSON.parse(decrypt(encrypted, iv, authTag)) as Record<string, unknown>;
+  const base = (plain?.value ?? {}) as Record<string, unknown>;
+  return {
+    source: plain ? `${plain.source} + FREEAPI_CONFIG_SEALED` : 'FREEAPI_CONFIG_SEALED',
+    value: { ...base, ...unsealed },
+  };
 }
 
 function encryptedKey(raw: string) {

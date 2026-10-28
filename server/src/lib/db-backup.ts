@@ -52,6 +52,35 @@ function parseBackupKey(): Buffer {
   return Buffer.from(raw, 'hex');
 }
 
+// Opt-in request signing for HTTP backup targets (FREEAPI_DB_BACKUP_SIGN=ed25519),
+// an alternative to a shared FREEAPI_DB_BACKUP_TOKEN. The Ed25519 private key is
+// derived from the backup key, so no extra secret has to be provisioned; the
+// store verifies with the public key, which is safe to publish. Signed message:
+// METHOD \n pathname \n timestamp-ms \n sha256-hex(body).
+const ED25519_PKCS8_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
+
+function backupSigningKey(): crypto.KeyObject {
+  const seed = crypto.createHmac('sha256', parseBackupKey()).update('jayrouter-backup-signing-v1').digest();
+  return crypto.createPrivateKey({ key: Buffer.concat([ED25519_PKCS8_PREFIX, seed]), format: 'der', type: 'pkcs8' });
+}
+
+/** Raw 32-byte public key, hex, for configuring the backup store. */
+export function backupSigningPublicKeyHex(): string {
+  const spki = crypto.createPublicKey(backupSigningKey()).export({ format: 'der', type: 'spki' });
+  return spki.subarray(spki.length - 32).toString('hex');
+}
+
+function backupAuthHeader(method: string, target: string, body?: Buffer): string | null {
+  const token = process.env.FREEAPI_DB_BACKUP_TOKEN?.trim();
+  if (token) return `Bearer ${token}`;
+  if (process.env.FREEAPI_DB_BACKUP_SIGN?.trim().toLowerCase() !== 'ed25519') return null;
+  const ts = String(Date.now());
+  const digest = crypto.createHash('sha256').update(body ?? Buffer.alloc(0)).digest('hex');
+  const message = `${method}\n${new URL(target).pathname}\n${ts}\n${digest}`;
+  const sig = crypto.sign(null, Buffer.from(message), backupSigningKey()).toString('base64url');
+  return `JayRouter-Ed25519 ts=${ts},sig=${sig}`;
+}
+
 function encryptBackup(plain: Buffer): Buffer {
   const key = parseBackupKey();
   const iv = crypto.randomBytes(12);
@@ -163,8 +192,8 @@ function decodeHuggingFacePayload(raw: Buffer): Buffer {
 async function readTarget(target: string): Promise<Buffer | null> {
   if (isHttpTarget(target)) {
     const headers: Record<string, string> = {};
-    const token = process.env.FREEAPI_DB_BACKUP_TOKEN?.trim();
-    if (token) headers.Authorization = `Bearer ${token}`;
+    const auth = backupAuthHeader('GET', target);
+    if (auth) headers.Authorization = auth;
     const res = await fetch(target, { method: 'GET', headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (res.status === 404 || res.status === 204) return null;
     if (!res.ok) throw new Error(`backup restore failed: HTTP ${res.status}`);
@@ -189,7 +218,8 @@ async function writeTarget(target: string, payload: Buffer): Promise<void> {
     }
 
     const headers: Record<string, string> = { 'Content-Type': 'application/octet-stream' };
-    if (token) headers.Authorization = `Bearer ${token}`;
+    const auth = backupAuthHeader('PUT', target, payload);
+    if (auth) headers.Authorization = auth;
     const res = await fetch(target, {
       method: 'PUT',
       headers,
